@@ -1,4 +1,5 @@
 require 'spec/spec_helper'
+require 'lib/game/server'
 require 'lib/game/message_handler'
 
 module TTT
@@ -10,14 +11,15 @@ module TTT
       end
 
       let(:web_socket) { double "WebSocket" }
+      let(:server) { Server.new }
       let(:raw_message) { generate_raw(command, options) }
-      let(:handler) { MessageHandler.new(web_socket, raw_message) }
-
-      subject { handler.handle_message }
-      before { allow(handler).to receive(:send_message) }
-      before { subject }
+      let(:handler) { MessageHandler.new(server, web_socket, raw_message) }
 
       describe "Messages" do
+        subject { handler.handle_message }
+        before { allow(handler).to receive(:send_message) }
+        before { subject }
+
         describe "register message" do
           let(:command) { :register }
           let(:options) { { name: 'Foo' } }
@@ -30,6 +32,10 @@ module TTT
           end
           specify do
             expect(handler).to have_received(:send_message).with(:user_info, username: 'Foo')
+          end
+
+          specify do
+            expect(server.clients.count).to eq(1)
           end
         end
       end

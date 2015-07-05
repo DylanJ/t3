@@ -3,7 +3,14 @@ require 'em-websocket'
 module TTT
   module Game
     class Server
-      def self.handler
+      attr_reader :clients, :rooms
+
+      def initialize
+        @clients = []
+        @rooms = []
+      end
+
+      def websocket_handler
         EM::WebSocket.run(:host => "0.0.0.0", :port => 8080, debug: true) do |ws|
           ws.onopen do |handshake|
             puts "WebSocket connection open"
@@ -14,15 +21,19 @@ module TTT
           end
 
           ws.onmessage do |msg|
-            MessageHandler.handle(ws, msg)
+            MessageHandler.handle(self, ws, msg)
           end
         end
       end
 
-      def self.start!
+      def start
         Thread.new do
-          EM.run { Server.handler }
+          EM.run { websocket_handler }
         end
+      end
+
+      def self.start!
+        self.new.start
       end
     end
   end
