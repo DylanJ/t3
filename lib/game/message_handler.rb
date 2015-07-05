@@ -44,7 +44,7 @@ module TTT
       def register
         puts "CLIENT REGISTERING"
         send_message(:welcome, { msg: "to ttt v1" })
-        send_message(:room_list, rooms: @server.rooms)
+        send_message(:room_list, rooms: @server.room_list)
         send_message(:user_info, username: @options[:name])
 
         @server.clients << Client.new(@web_socket, @options[:name])
@@ -67,7 +67,7 @@ module TTT
       end
 
       def send_message(command, options)
-        cmd = { c: command.to_sym }.merge(options)
+        cmd = { command: command.to_sym }.merge(options)
         data = JSON.generate(cmd)
         @web_socket.send(data)
       end

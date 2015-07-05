@@ -52,6 +52,10 @@ module TTT
         @clients.detect{ |x| x.web_socket == web_socket }
       end
 
+      def room_list
+        @rooms.map(&:simple_info)
+      end
+
       private
 
       def room_name_exists?(name)
