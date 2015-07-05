@@ -32,6 +32,8 @@ module TTT
         case @command
         when :register
           register
+        when :room_create
+          room_create
         else
           puts "don't know how to handle #{@command}"
         end
@@ -45,7 +47,17 @@ module TTT
         send_message(:room_list, rooms: @server.rooms)
         send_message(:user_info, username: @options[:name])
 
-        @server.clients << Client.new(@websocket, @options[:name])
+        @server.clients << Client.new(@web_socket, @options[:name])
+      end
+
+      def room_create
+        client = @server.client_from_web_socket(@web_socket)
+
+        if room = @server.add_room(client, @options[:name])
+          send_message(:room_info, room.info)
+        else
+          send_message(:error, {message: 'cannot create room'})
+        end
       end
 
       def symify_hash(hash)

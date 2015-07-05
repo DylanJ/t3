@@ -1,4 +1,5 @@
 require 'em-websocket'
+require 'lib/game/room'
 
 module TTT
   module Game
@@ -8,6 +9,17 @@ module TTT
       def initialize
         @clients = []
         @rooms = []
+      end
+
+      def add_room(owner, name)
+        room = Room.new(owner, name)
+
+        return false if room_name_exists?(name)
+        return false unless room.valid?
+
+        @rooms << room
+
+        room
       end
 
       def websocket_handler
@@ -34,6 +46,16 @@ module TTT
 
       def self.start!
         self.new.start
+      end
+
+      def client_from_web_socket(web_socket)
+        @clients.detect{ |x| x.web_socket == web_socket }
+      end
+
+      private
+
+      def room_name_exists?(name)
+        @rooms.detect{ |x| x.name == name }
       end
     end
   end
