@@ -1,0 +1,32 @@
+<!doctype html5>
+
+<html>
+<head>
+  <title>ttt</title>
+  <script type="text/javascript">
+    sock = new WebSocket('ws://0.0.0.0:8080')
+    sock.onopen = function(handshake) {
+      console.log("open" + handshake)
+      sock.send("hello world")
+      sock.close()
+    }
+
+    sock.onmessage = function(message) {
+      console.log("message" + message)
+    }
+
+    sock.onerror = function(error) {
+      console.log("error")
+    }
+
+    sock.onclose = function(error) {
+      console.log("closed")
+    }
+  </script>
+</head>
+<body>
+  hello
+</body>
+</html>
+
+
