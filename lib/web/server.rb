@@ -11,6 +11,7 @@ module TTT
       end
 
       get '/' do
+        load 'lib/game/message_handler.rb'
         File.read('views/index.html')
       end
     end

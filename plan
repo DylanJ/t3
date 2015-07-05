@@ -1,0 +1,83 @@
+goal:
+multiplayer tic tac toe game with rooms and a persistant leaderboard.
+
+# there are many rooms. a game doesn't start until both players are in a room.
+
+# setup
+-> websocket connect
+<- websocket onconnect with handshake
+
+# joining ttt server
+-> register (name)
+
+<- welcome
+<- room_list (array of rooms)
+<- user_info (score, sanitized name)
+OR
+<- banned
+<- message
+
+# creating a room
+-> room_create (name, [password], [size])
+JOIN_ROOM
+OR
+<- error (room exists, validation error)
+
+# joining room
+-> room_join (id, password (bool), size)
+
+if state is waiting
+  <- room_info (players)
+elseif state is in progress && if players.count == 1/2 && players.active.contains? current_user
+  <- room_info
+  <- game_state ( tile positions, room score )
+else
+  <- error (room doesnt exist, game in progress, bad password)
+end
+
+# once a room has two players...
+<- ready_check
+
+both players will send
+-> ready (client 1)
+-> ready (client 2)
+
+<- game_begin (starter: random client)
+
+while (game is not finished)
+  -> game_play (tile pos) (client id)
+  <- game_player_move (tile pos, client_id)
+
+  if (there is a winning move || game is tie)
+    game is finished
+    <- game_finished (winner: client)
+
+    <- rematch?
+    # clients send either
+    -> rematch_accept
+    -> rematch_reject
+    
+    # if both clients accept
+    <- game_begin(starter: random client)
+
+    # if either client rejects
+    <- room_leaderboard
+    <- room_close
+  end
+
+if a client disconnects mid game they should be able to connect
+to the room even if it's currently in progress. the room should
+have 1/2 players.
+-> room_join (some in progress room)
+
+
+room_information {
+  state: waiting,
+  players: [],
+  size: n,
+}
+
+game_start {
+  starting_player: random user.
+}
+

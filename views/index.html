@@ -4,15 +4,25 @@
 <head>
   <title>ttt</title>
   <script type="text/javascript">
+
+    function send(command, options) {
+      options.command = command
+
+      data = JSON.stringify(options)
+      sock.send(data)
+    };
+
     sock = new WebSocket('ws://0.0.0.0:8080')
+
     sock.onopen = function(handshake) {
       console.log("open" + handshake)
-      sock.send("hello world")
-      sock.close()
+      send('register', { name: "hello world" })
     }
 
     sock.onmessage = function(message) {
-      console.log("message" + message)
+      console.log("received message")
+      data = JSON.parse(message.data)
+      console.log(data)
     }
 
     sock.onerror = function(error) {
