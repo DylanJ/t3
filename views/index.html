@@ -32,6 +32,8 @@
       console.log(data)
 
       if (data.command == 'user_info') {
+        ttt.id = data.client.id
+
         send('room_create', { name: 'Some Room' })
       }
       if (data.command == 'room_list') {
@@ -44,6 +46,21 @@
         console.log(room)
 
         ttt.board.view.draw()
+      }
+
+      if (data.command == 'game_start') {
+        console.log("game started!")
+        if (data.starter.id == ttt.id) {
+          console.log("i go first!")
+        } else {
+          console.log(data.starter.name + " goes first")
+        }
+      }
+
+      if (data.command == 'turn') {
+        console.log('turn was made');
+
+        ttt.board.view.move(data.turn)
       }
     }
 

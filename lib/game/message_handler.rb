@@ -2,10 +2,13 @@ require 'json'
 
 require 'lib/game/client'
 require 'lib/game/handler'
+require 'lib/game/message_builder'
 
 module TTT
   module Game
     class MessageHandler < Handler
+      include MessageBuilder
+
       def initialize(server, web_socket, raw_message)
         super
 
@@ -30,6 +33,8 @@ module TTT
           room_create
         when :room_join
           room_join
+        when :move
+          move
         else
           puts "don't know how to handle #{@command}"
         end
@@ -37,13 +42,41 @@ module TTT
 
       private
 
+      def move
+        puts "PLAYER MOVED"
+
+        client = @server.client_from_web_socket(@web_socket)
+
+        if client.nil?
+          puts "client is nil!"
+          return
+        end
+
+        room = client.room
+
+        if room.nil?
+          puts "room is nil!"
+          return
+        end
+
+        if room.move(client, @options[:piece_id])
+          send_message(:valid_move)
+          room.finish_turn
+        else
+          send_message(:illegal_move)
+        end
+      end
+
       def register
         puts "CLIENT REGISTERING"
+
+        client = Client.new(@web_socket, @options[:name])
+
         send_message(:welcome, { msg: "to ttt v1" })
         send_message(:room_list, rooms: @server.room_list)
-        send_message(:user_info, username: @options[:name])
+        send_message(:user_info, client: client.info)
 
-        @server.clients << Client.new(@web_socket, @options[:name])
+        @server.clients << client
       end
 
       def room_create
@@ -70,6 +103,8 @@ module TTT
         else
           send_message(:error, {message: 'cannot join room'})
         end
+
+        room.start_game
       end
 
       def symify_hash(hash)
@@ -78,14 +113,12 @@ module TTT
         end
       end
 
-      def send_message(command, options)
-        cmd = { command: command.to_sym }.merge(options)
-        data = JSON.generate(cmd)
-        @web_socket.send(data)
+      def send_message(command, options={})
+        @web_socket.send(build_message(command, options))
       end
 
       def whitelisted_commands
-        [:register, :room_create, :room_join]
+        [:register, :room_create, :room_join, :move]
       end
 
       def acceptable_command?

@@ -20,7 +20,9 @@ module TTT
         @original_players = []
         @id = generate_id()
 
-        puts "Creating Room"
+        @pieces = (size*size).times.map do
+          nil
+        end
       end
 
       def add_player(client)
@@ -34,19 +36,49 @@ module TTT
         end
 
         if added_successfully
+          broadcast("player_joined", { player: client.info })
+
           @players << client
           client.room = self
-          puts "added player (#{@players.count}/2)"
         end
-
-        start_game
 
         added_successfully
       end
 
       def remove_player(client)
         @players.delete(client)
-        puts "removed player (#{@players.count}/2)"
+        broadcast("player_left", { player: client.info })
+      end
+
+      def symbol_for_player(client)
+        @symbol_map[client]
+      end
+
+      def move(client, piece_id)
+        return false unless in_progress?
+
+        piece_id = Integer(piece_id) rescue nil
+
+        return false if piece_id.nil?
+
+        too_big = piece_id >= @grid_size**2
+        too_small = piece_id < 0
+        taken = !@pieces[piece_id].nil?
+
+        return false if too_big || too_small || taken
+
+        @pieces[piece_id] = symbol_for_player(client)
+        @last_move = piece_id
+
+        true
+      end
+
+      def finish_turn
+        last_move = @last_move
+
+        @current_player = next_player
+
+        broadcast('turn', turn: { piece_id: @last_move, symbol: @pieces[@last_move], player_id: @current_player.id })
       end
 
       def empty?
@@ -54,7 +86,12 @@ module TTT
       end
 
       def start_game
-        puts "willd start game here if ready"
+        if ready? && !in_progress?
+          @state = STATE::IN_PROGRESS
+          @current_player = @players.sample
+          @symbol_map = Hash[@players.zip(['x','o'])] # narly, do something else
+          broadcast("game_start", { starter: @current_player.info })
+        end
       end
 
       def valid?
@@ -85,12 +122,22 @@ module TTT
 
       private
 
+      def broadcast(command, options)
+        @players.each do |player|
+          player.send(command, options)
+        end
+      end
+
       def waiting?
         @state == STATE::WAITING
       end
 
       def in_progress?
         @state == STATE::IN_PROGRESS
+      end
+
+      def ready?
+        @players.size == 2
       end
 
       def joinable?
@@ -112,6 +159,10 @@ module TTT
 
       def generate_id
         SecureRandom.uuid # something unique
+      end
+
+      def next_player
+        @players.detect{ |x| x != @current_player }
       end
     end
   end

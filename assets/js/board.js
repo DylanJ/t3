@@ -18,7 +18,11 @@ BoardController.prototype.buildBoard = function() {
 
 BoardController.prototype.clickPiece = function(id) {
   console.log("piece clicked: " + id);
-  send('player_move', { piece_id: id });
+  send('move', { piece_id: id });
+}
+
+BoardController.prototype.move = function(turn) {
+  this.view.move(turn)
 }
 
 var BoardView = function(boardController) {
@@ -32,6 +36,7 @@ var BoardView = function(boardController) {
 BoardView.prototype.createBoard = function() {
   pieces = this.controller.pieces;
   boardNode = this.boardNode;
+  boardPieceNodes = [];
   controller = this.controller;
 
   pieces.forEach(function(piece, i) {
@@ -44,7 +49,14 @@ BoardView.prototype.createBoard = function() {
     };
 
     boardNode.appendChild(boardPieceNode);
+    boardPieceNodes.push(boardPieceNode);
   });
+
+  this.boardPieceNodes = boardPieceNodes;
+}
+
+BoardView.prototype.move = function(turn) {
+  this.boardPieceNodes[turn.piece_id].innerHTML = turn.symbol;
 }
 
 BoardView.prototype.draw = function() {
