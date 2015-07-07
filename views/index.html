@@ -3,7 +3,14 @@
 <html>
 <head>
   <title>ttt</title>
+  <script type="text/javascript" src="js/room_list.js"></script>
+  <script type="text/javascript" src="js/board.js"></script>
   <script type="text/javascript">
+
+    this.ttt = {
+      room_list: new RoomListController(),
+      board: new BoardController(),
+    }
 
     function send(command, options) {
       options.command = command
@@ -23,6 +30,21 @@
       console.log("received message")
       data = JSON.parse(message.data)
       console.log(data)
+
+      if (data.command == 'user_info') {
+        send('room_create', { name: 'Some Room' })
+      }
+      if (data.command == 'room_list') {
+        ttt.room_list.loadRoomList(data.rooms)
+        ttt.room_list.view.draw()
+      }
+      if (data.command == 'room_joined') {
+        room = data.room
+        console.log("joined room")
+        console.log(room)
+
+        ttt.board.view.draw()
+      }
     }
 
     sock.onerror = function(error) {
@@ -32,10 +54,11 @@
     sock.onclose = function(error) {
       console.log("closed")
     }
+
   </script>
 </head>
 <body>
-  hello
+  <div id="app">application goes here</div>
 </body>
 </html>
 
