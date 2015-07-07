@@ -4,7 +4,7 @@ require 'sinatra/base'
 module TTT
   module Web
     class Server < Sinatra::Base
-      set :root, File.dirname(__FILE__)
+      set :public_folder, 'assets'
 
       def self.start!
         self.run!

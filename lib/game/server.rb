@@ -1,5 +1,7 @@
 require 'em-websocket'
 require 'lib/game/room'
+require 'lib/game/close_handler'
+require 'pry'
 
 module TTT
   module Game
@@ -22,6 +24,11 @@ module TTT
         room
       end
 
+      def remove_room(room)
+        @rooms.delete(room)
+        puts "Deleting Room"
+      end
+
       def websocket_handler
         EM::WebSocket.run(:host => "0.0.0.0", :port => 8080, debug: true) do |ws|
           ws.onopen do |handshake|
@@ -30,6 +37,7 @@ module TTT
 
           ws.onclose do
             puts "Connection closed"
+            CloseHandler.handle(self, ws)
           end
 
           ws.onmessage do |msg|
@@ -52,11 +60,13 @@ module TTT
         @clients.detect{ |x| x.web_socket == web_socket }
       end
 
+      def room_from_id(room_id)
+        @rooms.detect{ |x| x.id == room_id }
+      end
+
       def room_list
         @rooms.map(&:simple_info)
       end
-
-      private
 
       def room_name_exists?(name)
         @rooms.detect{ |x| x.name == name }

@@ -14,16 +14,53 @@ module TTT
         @owner = owner
         @name = name
         @password = password
-        @size = size
+        @grid_size = size
         @state = STATE::WAITING
         @players = []
+        @original_players = []
         @id = generate_id()
+
+        puts "Creating Room"
+      end
+
+      def add_player(client)
+        added_successfully = joinable?
+
+        if in_progress? && joinable?
+          # verify only same username can rejoin a game.
+          added_successfully = @original_players.detect do |player_name|
+            player_name == client.name
+          end
+        end
+
+        if added_successfully
+          @players << client
+          client.room = self
+          puts "added player (#{@players.count}/2)"
+        end
+
+        start_game
+
+        added_successfully
+      end
+
+      def remove_player(client)
+        @players.delete(client)
+        puts "removed player (#{@players.count}/2)"
+      end
+
+      def empty?
+        @players.size == 0
+      end
+
+      def start_game
+        puts "willd start game here if ready"
       end
 
       def valid?
         return false if @owner.nil?
         return false if @name.empty?
-        return false if @size != 3 # for now :)
+        return false if @grid_size != 3 # for now :)
 
         true
       end
@@ -36,7 +73,8 @@ module TTT
         {
           name: @name,
           password: has_password?,
-          size: @size,
+          size: "#{@players.count}/2",
+          grid: @grid_size,
           id: @id,
         }
       end
@@ -46,6 +84,18 @@ module TTT
       end
 
       private
+
+      def waiting?
+        @state == STATE::WAITING
+      end
+
+      def in_progress?
+        @state == STATE::IN_PROGRESS
+      end
+
+      def joinable?
+        @players.size < 2
+      end
 
       def has_password?
         (@password || "").size > 0
