@@ -3,14 +3,44 @@
 <html>
 <head>
   <title>ttt</title>
+  <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet" type="text/css">
+  <link type="text/css" rel="stylesheet" href="css/style.css"/>
+  <script type="text/javascript" src="js/dominate.min.js"></script>
+  <script type="text/javascript" src="js/status.js"></script>
+  <script type="text/javascript" src="js/alert.js"></script>
   <script type="text/javascript" src="js/room_list.js"></script>
   <script type="text/javascript" src="js/board.js"></script>
   <script type="text/javascript">
+    sock = new WebSocket('ws://0.0.0.0:8080');
 
     this.ttt = {
       room_list: new RoomListController(),
       board: new BoardController(),
+      alert: new AlertController(),
+      status: new StatusController(),
+    };
+
+    this.ttt.updateApp = function(node) {
+      element = document.getElementById('app');
+      element.appendChild(node)
+    };
+
+    register = function(name) {
+      send('register', { name: name });
+      ttt.status.setName(name);
     }
+
+    document.addEventListener("DOMContentLoaded", function(event) {
+
+      if (sessionStorage.getItem('name') == null) {
+        ttt.alert.prompt('Please Choose a Name', 'Register', function(name) {
+          register(name);
+          sessionStorage.setItem('name', name);
+        });
+      }
+
+      document.body.appendChild(ttt.status.view.statusNode);
+    });
 
     function send(command, options) {
       options.command = command
@@ -19,11 +49,10 @@
       sock.send(data)
     };
 
-    sock = new WebSocket('ws://0.0.0.0:8080')
-
-    sock.onopen = function(handshake) {
-      console.log("open" + handshake)
-      send('register', { name: "hello world" })
+    sock.onopen = function() {
+      if ((name = sessionStorage.getItem('name')) != null) {
+        register(name);
+      }
     }
 
     sock.onmessage = function(message) {
@@ -31,10 +60,12 @@
       data = JSON.parse(message.data)
       console.log(data)
 
+      if (data.command == 'welcome') {
+        ttt.alert.close();
+      }
+
       if (data.command == 'user_info') {
         ttt.id = data.client.id
-
-        send('room_create', { name: 'Some Room' })
       }
       if (data.command == 'room_list') {
         ttt.room_list.loadRoomList(data.rooms)
@@ -44,7 +75,7 @@
         room = data.room
         console.log("joined room")
         console.log(room)
-
+        ttt.room_list.close();
         ttt.board.view.draw()
       }
 
@@ -57,10 +88,21 @@
         }
       }
 
-      if (data.command == 'turn') {
-        console.log('turn was made');
+      if (data.command == 'game_state') {
+        console.log("joining an in progress game")
+        ttt.room_list.close();
+        ttt.board.loadGame(data.game);
+      }
 
-        ttt.board.view.move(data.turn)
+      if (data.command == 'game_turn') {
+        console.log('turn was made');
+        ttt.board.move(data.turn);
+      }
+      if (data.command == 'game_win') {
+        ttt.board.gameWon(data.winner);
+      }
+      if (data.command == 'game_lose') {
+        ttt.board.gameTie();
       }
     }
 
@@ -71,11 +113,13 @@
     sock.onclose = function(error) {
       console.log("closed")
     }
-
   </script>
 </head>
 <body>
-  <div id="app">application goes here</div>
+  <h1>Tic Tac Toe</h1>
+  <div id="app"></div>
+  <div id="status">
+  </div>
 </body>
 </html>
 
