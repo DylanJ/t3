@@ -6,6 +6,8 @@ module TTT
       def handle_message
         client = @server.client_from_web_socket(@web_socket)
 
+        return if client.nil?
+
         room = client.room
 
         client.disconnect()

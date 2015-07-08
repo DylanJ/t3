@@ -20,9 +20,7 @@ module TTT
         @original_players = []
         @id = generate_id()
 
-        @pieces = (size*size).times.map do
-          nil
-        end
+        reset_board()
       end
 
       def add_player(client)
@@ -51,7 +49,28 @@ module TTT
       end
 
       def symbol_for_player(client)
-        @symbol_map[client]
+        @symbol_map[client.id]
+      end
+
+      def win_or_tie?(client)
+        g = @pieces
+        s = symbol_for_player(client)
+
+        @grid_size.times do |i|
+          # rows
+          return :win if g[0][i] == s && g[1][i] == s && g[2][i] == s
+          # cols
+          return :win if g[i][0] == s && g[i][1] == s && g[i][2] == s
+        end
+
+        # diag \
+        return :win if @grid_size.times.map{ |i| g[i][i] == s }.all?
+        # diag /
+        return :win if @grid_size.times.map{ |i| g[(@grid_size-1)-i][i] == s }.all?
+
+        return :tie if @pieces.flatten.all?{ |p| !p.nil? }
+
+        return nil
       end
 
       def move(client, piece_id)
@@ -63,22 +82,63 @@ module TTT
 
         too_big = piece_id >= @grid_size**2
         too_small = piece_id < 0
-        taken = !@pieces[piece_id].nil?
+
+        x = piece_id % @grid_size
+        y = piece_id / @grid_size
+
+        taken = !@pieces[y][x].nil?
 
         return false if too_big || too_small || taken
 
-        @pieces[piece_id] = symbol_for_player(client)
+        @pieces[y][x] = symbol_for_player(@current_player)
         @last_move = piece_id
 
         true
       end
 
+      def print_board
+        @grid_size.times do |y|
+          @grid_size.times do |x|
+            print @pieces[y][x] || '#'
+          end
+          print "\n"
+        end
+      end
+
       def finish_turn
         last_move = @last_move
+        last_player = @current_player
+
+        symbol = symbol_for_player(last_player)
 
         @current_player = next_player
 
-        broadcast('turn', turn: { piece_id: @last_move, symbol: @pieces[@last_move], player_id: @current_player.id })
+        print_board()
+
+        case win_or_tie?(last_player)
+        when :win
+          broadcast('game_win', winner: last_player.info)
+          reset_board()
+          broadcast_gamestate()
+
+        when :tie
+          broadcast('game_tie', {})
+          reset_board()
+          broadcast_gamestate()
+
+        else
+          broadcast('game_turn', turn: {
+            piece_id: @last_move,
+            symbol: symbol,
+            player_id: @current_player.id
+          })
+        end
+      end
+
+      def reset_board
+        @pieces = @grid_size.times.map do
+          @grid_size.times.map { nil }
+        end
       end
 
       def empty?
@@ -86,11 +146,14 @@ module TTT
       end
 
       def start_game
-        if ready? && !in_progress?
+        if in_progress?
+          broadcast_gamestate()
+        elsif ready? && !in_progress?
           @state = STATE::IN_PROGRESS
           @current_player = @players.sample
-          @symbol_map = Hash[@players.zip(['x','o'])] # narly, do something else
-          broadcast("game_start", { starter: @current_player.info })
+          @symbol_map = Hash[@players.map(&:id).zip(['x','o'])] # narly, do something else
+          @original_players = @players.map(&:name)
+          broadcast_gamestart()
         end
       end
 
@@ -121,6 +184,14 @@ module TTT
       end
 
       private
+
+      def broadcast_gamestate
+        broadcast("game_state", { game: { pieces: @pieces.flatten } })
+      end
+
+      def broadcast_gamestart
+        broadcast("game_start", { starter: @current_player.info })
+      end
 
       def broadcast(command, options)
         @players.each do |player|

@@ -100,11 +100,10 @@ module TTT
           send_message(:error, {message: 'room does not exist'})
         elsif room.add_player(client)
           send_message(:room_joined, room: room.info)
+          room.start_game
         else
           send_message(:error, {message: 'cannot join room'})
         end
-
-        room.start_game
       end
 
       def symify_hash(hash)
