@@ -21,12 +21,29 @@ module TTT
 
         @rooms << room
 
+        @clients.each do |c|
+          next if c == owner
+
+          c.send('room_added', room: room.simple_info)
+        end
+
         room
       end
 
       def remove_room(room)
         @rooms.delete(room)
         puts "Deleting Room"
+        @clients.each do |c|
+          next if c == room.owner
+
+          c.send('room_removed', room_id: room.id)
+        end
+      end
+
+      def update_room(room)
+        @clients.each do |c|
+          c.send('room_update', room: room.simple_info)
+        end
       end
 
       def websocket_handler
@@ -42,6 +59,12 @@ module TTT
 
           ws.onmessage do |msg|
             MessageHandler.handle(self, ws, msg)
+          end
+
+          ws.onerror do |error|
+
+            binding.pry; 1+1
+
           end
         end
       end

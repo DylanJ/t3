@@ -14,7 +14,7 @@ module TTT
 
         puts "Recieved message: #{raw_message}"
 
-        data = JSON.parse(raw_message)
+        data = JSON.parse(raw_message) rescue {}
         data = symify_hash(data)
 
         @command = (data.delete(:command) || :invalid_command).to_sym
@@ -35,12 +35,34 @@ module TTT
           room_join
         when :move
           move
+        when :leave
+          leave
         else
           puts "don't know how to handle #{@command}"
         end
       end
 
       private
+
+      def leave
+        client = @server.client_from_web_socket(@web_socket)
+
+        if client.nil?
+          puts "client is nil!"
+          return
+        end
+
+        room = client.room
+
+        if room.nil?
+          puts "room is nil!"
+          return
+        end
+
+        room.remove_player(client)
+
+        send_message(:room_list, rooms: @server.room_list)
+      end
 
       def move
         puts "PLAYER MOVED"
@@ -70,7 +92,7 @@ module TTT
       def register
         puts "CLIENT REGISTERING"
 
-        client = Client.new(@web_socket, @options[:name])
+        client = Client.new(@web_socket, @options[:name], @options[:id])
 
         send_message(:welcome, { msg: "to ttt v1" })
         send_message(:room_list, rooms: @server.room_list)
@@ -87,6 +109,8 @@ module TTT
         if room = @server.add_room(client, room_name)
           room.add_player(client)
           send_message(:room_joined, room: room.info)
+
+          @server.update_room(room)
         else
           send_message(:error, {message: 'cannot create room'})
         end
@@ -101,6 +125,7 @@ module TTT
         elsif room.add_player(client)
           send_message(:room_joined, room: room.info)
           room.start_game
+          @server.update_room(room)
         else
           send_message(:error, {message: 'cannot join room'})
         end
@@ -113,11 +138,16 @@ module TTT
       end
 
       def send_message(command, options={})
+        if @web_socket.state != :connected
+          puts "web socket not connected from #{caller_locations[0]}"
+          return
+        end
+
         @web_socket.send(build_message(command, options))
       end
 
       def whitelisted_commands
-        [:register, :room_create, :room_join, :move]
+        [:register, :room_create, :room_join, :move, :leave]
       end
 
       def acceptable_command?

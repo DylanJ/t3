@@ -12,8 +12,12 @@ module TTT
 
         client.disconnect()
 
-        if room && room.empty?
-          @server.remove_room(room)
+        if room
+          @server.update_room(room)
+
+          if room.empty?
+            @server.remove_room(room)
+          end
         end
       end
     end

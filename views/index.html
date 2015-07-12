@@ -10,7 +10,16 @@
   <script type="text/javascript" src="js/alert.js"></script>
   <script type="text/javascript" src="js/room_list.js"></script>
   <script type="text/javascript" src="js/board.js"></script>
+  <script type="text/javascript" src="js/game.js"></script>
   <script type="text/javascript">
+    game = new Game('ws://0.0.0.0:8080');
+
+    document.addEventListener("DOMContentLoaded", function(event) {
+      game.init();
+    });
+
+
+/*
     sock = new WebSocket('ws://0.0.0.0:8080');
 
     this.ttt = {
@@ -67,24 +76,31 @@
       if (data.command == 'user_info') {
         ttt.id = data.client.id
       }
+      if (data.command == 'room_added') {
+        ttt.room_list.add(data.room)
+        ttt.room_list.view.update()
+      }
+      if (data.command == 'room_removed') {
+        ttt.room_list.remove(data.room_id)
+        ttt.room_list.view.update()
+      }
       if (data.command == 'room_list') {
         ttt.room_list.loadRoomList(data.rooms)
-        ttt.room_list.view.draw()
+        ttt.room_list.view.add2dom();
       }
       if (data.command == 'room_joined') {
-        room = data.room
-        console.log("joined room")
-        console.log(room)
+        room = data.room;
+        console.log("joined room");
+        console.log(room);
         ttt.room_list.close();
-        ttt.board.view.draw()
+        ttt.board.view.draw();
       }
 
       if (data.command == 'game_start') {
-        console.log("game started!")
         if (data.starter.id == ttt.id) {
-          console.log("i go first!")
+          ttt.alert.notice("Your Turn");
         } else {
-          console.log(data.starter.name + " goes first")
+          console.log(data.starter.name + " goes first");
         }
       }
 
@@ -98,11 +114,12 @@
         console.log('turn was made');
         ttt.board.move(data.turn);
       }
-      if (data.command == 'game_win') {
-        ttt.board.gameWon(data.winner);
-      }
-      if (data.command == 'game_lose') {
-        ttt.board.gameTie();
+      if (data.command == 'game_end') {
+        if (data.result == 'win') {
+          ttt.board.gameWon(data.winner);
+        } else if (data.result == 'tie') {
+          ttt.board.gameTie();
+        }
       }
     }
 
@@ -113,13 +130,13 @@
     sock.onclose = function(error) {
       console.log("closed")
     }
+    */
   </script>
 </head>
 <body>
   <h1>Tic Tac Toe</h1>
   <div id="app"></div>
-  <div id="status">
-  </div>
+  <div id="status"></div>
 </body>
 </html>
 

@@ -1,12 +1,12 @@
 var StatusController = function() {
-  this.name = "undefined";
+  this.name = "???";
   this.view = new StatusView(this);
-}
+};
 
 StatusController.prototype.setName = function(name) {
   this.name = name;
-  this.view.setName(name)
-}
+  this.view.setName(name);
+};
 
 var StatusView = function(statusController) {
   this.controller = statusController;
@@ -16,8 +16,12 @@ var StatusView = function(statusController) {
   this.statusNode = div({id: 'status'},
     div({class:'inner'}, span('Logged in as: ', this.nameNode))
   );
-}
+};
 
 StatusView.prototype.setName = function(name) {
-  this.nameNode.innerText = name
-}
+  this.nameNode.innerText = name;
+};
+
+StatusView.prototype.add2dom = function() {
+  document.body.appendChild(this.statusNode);
+};

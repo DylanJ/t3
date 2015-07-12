@@ -2,8 +2,8 @@ var AlertController = function() {
   this.view = new AlertView(this);
 };
 
-AlertController.prototype.notice = function(text) {
-  this.view.notice(text);
+AlertController.prototype.notice = function(text, callback) {
+  this.view.notice(text, callback);
 };
 
 AlertController.prototype.prompt = function(text, buttonText, callback) {
@@ -20,40 +20,51 @@ var AlertView = function(alertController) {
 };
 
 AlertView.prototype.prompt = function(text, buttonText, callback) {
-  node = this.createPrompt(text, buttonText, callback);
+  var node = this.createPrompt(text, buttonText, callback);
   this.alertNode.appendChild(node);
 
-  ttt.updateApp(this.alertNode);
+  this.add2dom();
 };
 
-AlertView.prototype.createButton = function(text, callback) {
-
-  return buttonNode;
-};
-
-AlertView.prototype.notice = function(text) {
-  node = this.createNotice(text);
+AlertView.prototype.notice = function(text, callback) {
+  var node = this.createNotice(text, callback);
 
   this.alertNode.appendChild(node);
 
-  ttt.updateApp(this.alertNode);
+  this.add2dom();
+};
+
+AlertView.prototype.add2dom = function() {
+  var app = document.getElementById('app');
+  app.appendChild(this.alertNode);
 };
 
 AlertView.prototype.close = function() {
-  while(node = this.alertNode.firstChild) {
-    this.alertNode.removeChild(node)
+  var node = this.alertNode.firstChild;
+
+  while(node !== null) {
+    this.alertNode.removeChild(node);
+
+    node = this.alertNode.firstChild;
   }
 
-  if ( parentNode = this.alertNode.parentNode ) {
+  var parentNode = this.alertNode.parentNode;
+
+  if (parentNode !== null) {
     parentNode.removeChild(this.alertNode);
+
+    parentNode = this.alertNode.parentNode;
   }
-}
+};
 
-AlertView.prototype.createNotice = function(text) {
-  innerNode = div({class: 'notice'}, text, br());
-
-  controller = this.controller;
-  okayButton = div({class: 'button', onclick: function() { controller.close() }}, text);
+AlertView.prototype.createNotice = function(text, callback) {
+  var innerNode = div({class: 'notice'}, text, br());
+  var controller = this.controller;
+  var okayCallback = callback;
+  var okayButton = div({class: 'button', onclick: function() {
+    controller.close();
+    okayCallback();
+  }, context: this}, text);
 
   innerNode.appendChild(okayButton);
 
@@ -61,20 +72,29 @@ AlertView.prototype.createNotice = function(text) {
 };
 
 AlertView.prototype.createPrompt = function(text, buttonText, callback) {
-  nameField = input({
+  var textField = input({
     type: 'text',
     name: 'info',
     class: 'input',
-    autofocus: 'yes'
+    autofocus: 'yes',
+    onkeyup: function(e) {
+      if (e.keyCode == 13) {
+        submit();
+      }
+    }
   });
 
-  innerNode = div({class: 'prompt'},
+  var controller = this.controller;
+  var submit = function() {
+    callback(textField.value);
+    controller.close();
+  };
+
+  var innerNode = div({class: 'prompt'},
     div({class:'description'}, text),
-    nameField, br(),
+    textField, br(),
     div({class:'center'},
-      div({class:'button', onclick: function(){
-        callback(nameField.value);
-      }}, buttonText)
+      div({class:'button', onclick: submit}, buttonText)
     )
   );
 
