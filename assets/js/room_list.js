@@ -32,6 +32,8 @@ RoomListController.prototype.close = function() {
 };
 
 RoomListController.prototype.loadRoomList = function(rooms) {
+  this.entries = [];
+
   for(i = 0; i < rooms.length; i++) {
     this.entries.push(rooms[i]);
   }
@@ -77,6 +79,9 @@ var RoomListView = function(roomListController) {
 
   this.roomListNode.appendChild(this.roomListEntriesNode);
   this.roomListNode.appendChild(this.roomListOptionsNode);
+
+  var btn = this.createRoomButton();
+  this.roomListOptionsNode.appendChild(btn);
 };
 
 // renders the list of rooms
@@ -102,8 +107,6 @@ RoomListView.prototype.update = function() {
 };
 
 RoomListView.prototype.add2dom = function() {
-  var btn = this.createRoomButton();
-  this.roomListOptionsNode.appendChild(btn);
 
   this.update();
 

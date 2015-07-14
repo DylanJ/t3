@@ -52,13 +52,10 @@ AlertView.prototype.close = function() {
 
   if (parentNode !== null) {
     parentNode.removeChild(this.alertNode);
-
-    parentNode = this.alertNode.parentNode;
   }
 };
 
 AlertView.prototype.createNotice = function(text, callback) {
-  var innerNode = div({class: 'notice'}, text, br());
   var controller = this.controller;
   var okayCallback = callback;
   var okayButton = div({class: 'button', onclick: function() {
@@ -66,9 +63,7 @@ AlertView.prototype.createNotice = function(text, callback) {
     okayCallback();
   }, context: this}, text);
 
-  innerNode.appendChild(okayButton);
-
-  return innerNode;
+  return div({class: 'notice'}, text, br(), okayButton);
 };
 
 AlertView.prototype.createPrompt = function(text, buttonText, callback) {

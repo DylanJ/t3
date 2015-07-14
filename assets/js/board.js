@@ -48,9 +48,9 @@ BoardController.prototype.playerQuit = function(player_id) {
   }
 };
 
-BoardController.prototype.gameWon = function(winner) {
+BoardController.prototype.gameWon = function(winner_id) {
   var message = "";
-  if ( this.game.getId() == winner.id ) {
+  if ( this.game.getId() == winner_id ) {
     message = "You Win!";
   } else {
     message = "You Lose!";
@@ -105,6 +105,7 @@ BoardController.prototype.loadGame = function(game) {
 
 BoardController.prototype.open = function(room) {
   console.log("opening a room");
+
   this.buildBoard(room.grid);
   this.view.updateBoard();
   this.view.updatePlayerList();

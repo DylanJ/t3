@@ -13,37 +13,35 @@ module TTT
         @rooms = []
       end
 
-      def add_room(owner, name)
-        room = Room.new(owner, name)
+      def broadcast(command, options)
+        @clients.each do |c|
+          c.send(command, options)
+        end
+      end
 
-        return false if room_name_exists?(name)
+      def add_room(room)
+        return false if room_name_exists?(room.name)
         return false unless room.valid?
 
         @rooms << room
 
-        @clients.each do |c|
-          next if c == owner
-
-          c.send('room_added', room: room.simple_info)
-        end
+        broadcast('room_added', room: room.simple_info)
 
         room
       end
 
       def remove_room(room)
         @rooms.delete(room)
-        puts "Deleting Room"
-        @clients.each do |c|
-          next if c == room.owner
 
-          c.send('room_removed', room_id: room.id)
-        end
+        broadcast('room_removed', room_id: room.id)
       end
 
       def update_room(room)
-        @clients.each do |c|
-          c.send('room_update', room: room.simple_info)
+        if room.empty? && !room.in_progress?
+          remove_room(room)
         end
+
+        broadcast('room_update', room: room.simple_info)
       end
 
       def websocket_handler
@@ -63,8 +61,7 @@ module TTT
 
           ws.onerror do |error|
 
-            binding.pry; 1+1
-
+            binding.pry;1;
           end
         end
       end

@@ -1,4 +1,5 @@
 require 'securerandom'
+require 'lib/game/player'
 
 module TTT
   module Game
@@ -16,7 +17,7 @@ module TTT
         @password = password
         @grid_size = size
         @state = STATE::WAITING
-        @players = []
+        @players = {}
         @original_players = []
         @id = generate_id()
         @scores = {}
@@ -24,38 +25,44 @@ module TTT
         reset_board()
       end
 
-      def add_player(client)
-        added_successfully = joinable?
+      def add_client(client)
+        can_join = true
 
-        if in_progress? && joinable?
-          # verify only same username can rejoin a game.
-          added_successfully = @original_players.detect do |player_name|
-            player_name == client.name
-          end
+        return false unless joinable?
+
+        # only players who started the game can rejoin
+        return false if in_progress? && @players[client.id].nil?
+
+        client.room = self
+
+        player = @players[client.id] || Player.new(client)
+        player.status = "Connected"
+        player.client = client # updates websock
+
+        @players[client.id] = player
+
+        client.send(:room_joined, room: info)
+        client.send(:game_state, gamestate_message)
+
+        broadcast("player_joined", { player: player.info })
+      end
+
+      def disconnect_client(client)
+        if player = @players[client.id]
+          player.status = 'Disconnected'
+          broadcast("player_disconnected", { player_id: player.id })
         end
+      end
 
-        if added_successfully
-          @players << client
-
-          broadcast("player_joined", { player: client.info })
-          client.room = self
+      def remove_client(client)
+        if player = @players.delete(client.id)
+          broadcast("player_disconnected", { player_id: player.id })
         end
-
-        added_successfully
       end
 
-      def remove_player(client)
-        @players.delete(client)
-        broadcast("player_disconnected", { player_id: client.id })
-      end
-
-      def symbol_for_player(client)
-        @symbol_map[client.id]
-      end
-
-      def win_or_tie?(client)
+      def win_or_tie?(player)
         g = @pieces
-        s = symbol_for_player(client)
+        s = player.symbol
 
         @grid_size.times do |i|
           # rows
@@ -74,31 +81,46 @@ module TTT
         return nil
       end
 
-      def players_turn?(client)
-        @current_player == client
+      def players_turn?(player)
+        @current_player.id == player.id
       end
 
       def move(client, piece_id)
-        return false unless in_progress?
+        x, y = get_x_y(piece_id)
 
-        return false unless players_turn?(client)
+        if valid_move?(client, x, y)
+          @pieces[y][x] = @players[client.id].symbol
+          @last_move = piece_id
 
+          client.send(:valid_move)
+
+          finish_turn
+        else
+          client.send(:illegal_move)
+        end
+      end
+
+      def get_x_y(piece_id)
         piece_id = Integer(piece_id) rescue nil
 
-        return false if piece_id.nil?
+        return nil if piece_id.nil?
 
         too_big = piece_id >= @grid_size**2
         too_small = piece_id < 0
 
+        return nil if too_big || too_small
+
         x = piece_id % @grid_size
         y = piece_id / @grid_size
 
-        taken = !@pieces[y][x].nil?
+        [x, y]
+      end
 
-        return false if too_big || too_small || taken
-
-        @pieces[y][x] = symbol_for_player(@current_player)
-        @last_move = piece_id
+      def valid_move?(player, x, y)
+        return false if x.nil? || y.nil?
+        return false unless in_progress?
+        return false unless players_turn?(player)
+        return false unless @pieces[y][x].nil?
 
         true
       end
@@ -115,42 +137,36 @@ module TTT
       def finish_turn
         last_player = @current_player
 
-        puts "before symbol"
-        symbol = symbol_for_player(last_player)
-        puts "after symbol"
-
         @current_player = next_player
 
         print_board()
 
         broadcast('game_turn', turn: {
           piece_id: @last_move,
-          symbol: symbol,
+          symbol: last_player.symbol,
           player_id: @current_player.id
         })
 
         if result = win_or_tie?(last_player)
-
           if result == :win
             @scores[last_player.id] ||= 0
             @scores[last_player.id] += 1
 
             last_player.win!
 
-            @players.each do |p|
-              next if p.id == last_player.id
-              p.lose!
+            @players.each do |id, player|
+              next if id == last_player.id
+              player.lose!
             end
           else # tie
-            @players.each do |p|
-              p.tie!
+            @players.values.each do |player|
+              player.tie!
             end
           end
 
-          broadcast('game_end', result: result, winner: last_player.info, scores: @scores)
+          broadcast('game_end', result: result, winner_id: last_player.id, scores: room_scores)
           reset_board()
           broadcast_gamestate()
-        else
         end
       end
 
@@ -169,9 +185,13 @@ module TTT
           broadcast_gamestate()
         elsif ready? && !in_progress?
           @state = STATE::IN_PROGRESS
-          @current_player = @players.sample
-          @symbol_map = Hash[@players.map(&:id).zip(['x','o'])] # narly, do something else
-          @original_players = @players.map(&:name)
+          @current_player = @players.values.sample
+          @original_players = @players.keys
+
+          @players.values.shuffle.zip(['x', 'o']) do |player, symbol|
+            player.symbol = symbol
+          end
+
           broadcast_gamestart()
         end
       end
@@ -192,7 +212,7 @@ module TTT
         {
           name: @name,
           password: has_password?,
-          size: "#{@players.count}/2",
+          size: "#{connected_player_count}/2",
           grid: @grid_size,
           id: @id,
           owner: @owner.name,
@@ -203,10 +223,12 @@ module TTT
         simple_info.merge(players: player_info)
       end
 
-      private
-
       def broadcast_gamestate
-        broadcast("game_state", { game: { pieces: @pieces.flatten, players: player_info } })
+        broadcast("game_state", gamestate_message)
+      end
+
+      def gamestate_message
+        { game: { pieces: @pieces.flatten, players: player_info, scores: @scores } }
       end
 
       def broadcast_gamestart
@@ -214,7 +236,7 @@ module TTT
       end
 
       def broadcast(command, options)
-        @players.each do |player|
+        @players.values.each do |player|
           player.send(command, options)
         end
       end
@@ -232,7 +254,12 @@ module TTT
       end
 
       def joinable?
-        @players.size < 2
+        connected_player_count < 2
+      end
+
+      def connected_player_count
+        statuses = @players.values.map(&:status)
+        statuses.select{ |s| s == 'Connected' }.size
       end
 
       def has_password?
@@ -240,7 +267,7 @@ module TTT
       end
 
       def player_info
-        @players.map(&:info)
+        @players.values.map(&:info)
       end
 
       def generate_id
@@ -248,7 +275,18 @@ module TTT
       end
 
       def next_player
-        @players.detect{ |x| x != @current_player }
+        player_id = @players.keys.detect{ |id| id != @current_player.id }
+
+        @players[player_id]
+      end
+
+      def room_scores
+        @scores.map do |id, score|
+          {
+            name: @players[id].name,
+            score: score
+          }
+        end
       end
     end
   end

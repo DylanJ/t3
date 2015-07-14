@@ -19,6 +19,7 @@ module TTT
 
         @command = (data.delete(:command) || :invalid_command).to_sym
         @options = data
+        @client = server.client_from_web_socket(web_socket)
       end
 
       def handle_message
@@ -45,105 +46,58 @@ module TTT
       private
 
       def leave
-        client = @server.client_from_web_socket(@web_socket)
-
-        if client.nil?
+        if @client.nil?
           puts "client is nil!"
           return
         end
 
-        room = client.room
-
-        if room.nil?
-          puts "room is nil!"
-          return
+        if @client.leave_room
+          @server.update_room(room)
+          @client.send(:room_list, rooms: @server.room_list)
         end
-
-        room.remove_player(client)
-
-        send_message(:room_list, rooms: @server.room_list)
       end
 
       def move
-        puts "PLAYER MOVED"
-
-        client = @server.client_from_web_socket(@web_socket)
-
-        if client.nil?
+        if @client.nil?
           puts "client is nil!"
           return
         end
 
-        room = client.room
-
-        if room.nil?
-          puts "room is nil!"
-          return
-        end
-
-        if room.move(client, @options[:piece_id])
-          send_message(:valid_move)
-          room.finish_turn
-        else
-          send_message(:illegal_move)
-        end
+        @client.move(@options[:piece_id])
       end
 
       def register
-        puts "CLIENT REGISTERING"
-
         client = Client.new(@web_socket, @options[:name], @options[:id])
 
-        send_message(:welcome, { msg: "to ttt v1" })
-        send_message(:room_list, rooms: @server.room_list)
-        send_message(:user_info, client: client.info)
+        client.send(:welcome, { msg: "to ttt v1" })
+        client.send(:room_list, rooms: @server.room_list)
+        client.send(:user_info, client: client.info)
 
         @server.clients << client
       end
 
       def room_create
-        client = @server.client_from_web_socket(@web_socket)
+        room = Room.new(@client, @options[:name])
 
-        room_name = @options[:name]
-
-        if room = @server.add_room(client, room_name)
-          room.add_player(client)
-          send_message(:room_joined, room: room.info)
-
+        if room = @server.add_room(room)
+          @client.join_room(room)
           @server.update_room(room)
         else
-          send_message(:error, {message: 'cannot create room'})
+          @client.send(:error, {message: 'cannot create room'})
         end
       end
 
       def room_join
-        client = @server.client_from_web_socket(@web_socket)
         room = @server.room_from_id(@options[:room_id])
 
-        if room.nil?
-          send_message(:error, {message: 'room does not exist'})
-        elsif room.add_player(client)
-          send_message(:room_joined, room: room.info)
-          room.start_game
-          @server.update_room(room)
-        else
-          send_message(:error, {message: 'cannot join room'})
-        end
+        @client.join_room(room)
+        @server.update_room(room)
       end
 
       def symify_hash(hash)
         {}.tap do |h|
           hash.each { |k,v| h[k.to_sym] = v }
         end
-      end
-
-      def send_message(command, options={})
-        if @web_socket.state != :connected
-          puts "web socket not connected from #{caller_locations[0]}"
-          return
-        end
-
-        @web_socket.send(build_message(command, options))
       end
 
       def whitelisted_commands

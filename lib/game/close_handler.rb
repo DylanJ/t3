@@ -8,16 +8,9 @@ module TTT
 
         return if client.nil?
 
-        room = client.room
-
-        client.disconnect()
-
-        if room
+        if room = client.room
+          room.disconnect_client(client)
           @server.update_room(room)
-
-          if room.empty?
-            @server.remove_room(room)
-          end
         end
       end
     end

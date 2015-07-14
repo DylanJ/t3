@@ -165,7 +165,7 @@ Game.prototype.onMessage = function(message) {
 
   if (data.command == 'game_end') {
     if (data.result == 'win') {
-      this.controllers.board.gameWon(data.winner);
+      this.controllers.board.gameWon(data.winner_id);
     } else if (data.result == 'tie') {
       this.controllers.board.gameTie();
     }
