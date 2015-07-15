@@ -72,13 +72,13 @@ RoomListController.prototype.remove = function(room_id) {
 
 var RoomListView = function(roomListController) {
   this.controller = roomListController;
-  this.roomListNode = div({id: 'room-list', class: 'container'});
 
   this.roomListEntriesNode = div({class: 'entries'});
   this.roomListOptionsNode = div({class: 'options'});
-
-  this.roomListNode.appendChild(this.roomListEntriesNode);
-  this.roomListNode.appendChild(this.roomListOptionsNode);
+  this.roomListNode = div(
+    div({id: 'room-list', class: 'container'}, this.roomListEntriesNode),
+    this.roomListOptionsNode
+  );
 
   var btn = this.createRoomButton();
   this.roomListOptionsNode.appendChild(btn);

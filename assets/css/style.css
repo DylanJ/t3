@@ -97,6 +97,7 @@ dl dd:after {
   margin: 0 auto;
 }
 
+
 .game {
   display: flex;
   min-width: 600px;
@@ -155,6 +156,36 @@ dl dd:after {
   font-size: 5em;
 
   color: rgba(255,255,255,0.2);
+}
+
+.game_over {
+  display: block;
+}
+
+.game_over .winner {
+  font-size: 4em;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.game_over .players {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-content: stretch;
+  font-size: 2em;
+}
+
+.game_over .players .player {
+  width: 30%;
+  text-align: center;
+  margin-bottom: 0;
+  
+}
+
+.options {
+  margin-top: 10px;
+  text-align: center;
 }
 
 .game .board {

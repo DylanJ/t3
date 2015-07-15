@@ -9,6 +9,7 @@ module TTT
       module STATE
         WAITING = 0
         IN_PROGRESS = 1
+        FINISHED = 2
       end
 
       def initialize(owner, name="", password=nil, size=3)
@@ -47,17 +48,28 @@ module TTT
         broadcast("player_joined", { player: player.info })
       end
 
-      def disconnect_client(client)
+      def client_disconnected(client)
         if player = @players[client.id]
           player.status = 'Disconnected'
           broadcast("player_disconnected", { player_id: player.id })
         end
       end
 
-      def remove_client(client)
-        if player = @players.delete(client.id)
-          broadcast("player_disconnected", { player_id: player.id })
-        end
+      def client_left(client)
+        player = @players[client.id]
+
+        return if player.nil?
+        return end_game() if in_progress?
+
+        broadcast("player_left", { player_id: player.id })
+
+        @players.delete(client.id)
+      end
+
+      def end_game()
+        @state = STATE::FINISHED
+
+        broadcast("game_over", { scores: @scores, players: player_info })
       end
 
       def win_or_tie?(player)
@@ -193,6 +205,7 @@ module TTT
           end
 
           broadcast_gamestart()
+          
         end
       end
 
@@ -232,7 +245,7 @@ module TTT
       end
 
       def broadcast_gamestart
-        broadcast("game_start", { start_player_id: @current_player.id })
+        broadcast("game_start", { start_player_id: @current_player.id, players: player_info })
       end
 
       def broadcast(command, options)
@@ -247,6 +260,10 @@ module TTT
 
       def in_progress?
         @state == STATE::IN_PROGRESS
+      end
+
+      def game_over?
+        @state == STATE::FINISHED
       end
 
       def ready?

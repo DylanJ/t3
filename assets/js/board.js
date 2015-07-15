@@ -9,8 +9,35 @@ var BoardController = function(game) {
   this.view = new BoardView(this);
 };
 
+BoardController.prototype.gameOver = function(options) {
+  var controller = this;
+  this.game.gameOver(options, function() {
+    controller.close();
+    this.game.controllers.room_list.open();
+  });
+};
+
+BoardController.prototype.startTurn = function(player_id) {
+  if (player_id == this.game.getId()) {
+    this.view.updateTurnText("Your turn!");
+  } else {
+    this.view.updateTurnText("Opponents turn.");
+  }
+};
+
+BoardController.prototype.illegalMove = function() {
+  this.view.updateTurnText("Cant do that!");
+};
+
+BoardController.prototype.gameStart = function(start_player_id, players) {
+  this.updatePlayers(players);
+  this.view.updatePlayerList();
+  this.startTurn(start_player_id);
+};
+
 BoardController.prototype.leave = function() {
   this.game.send('leave', {});
+  this.close();
 };
 
 BoardController.prototype.close = function() {
@@ -72,6 +99,7 @@ BoardController.prototype.gameTie = function(winner) {
 BoardController.prototype.buildBoard = function(size) {
   this.size = size;
   this.pieces = [];
+  this.players = {};
 
   for(i = 0; i < size*size; i++) {
     this.pieces.push(new Piece());
@@ -117,20 +145,17 @@ var BoardView = function(boardController) {
   this.boardNode = div({class: 'board'});
   this.infoNode = this.createInfoNode();
 
-  this.gameNode = div({class: 'game container'});
+  this.optionsNode = div({class: 'options'}, this.createOptionsButton());
 
-  this.gameNode.appendChild(this.infoNode);
-  this.gameNode.appendChild(this.boardNode);
+  this.gameContainerNode = div(
+    div({class: 'game container'},
+      this.infoNode,
+      this.boardNode
+    ),
+    this.optionsNode
+  );
 
   this.boardPieceNodes = [];
-
-  // var controller = this.controller = boardController;
-  // this.leaveButton = div({class: 'button'}, 'Leave Game');
-  // this.leaveButton.onclick = function() {
-  //   controller.leaveGame();
-  // };
-
-  // this.scoreNode = this.createScoreNode();
 };
 
 BoardView.prototype.updateBoard = function() {
@@ -157,7 +182,7 @@ BoardView.prototype.updatePlayerList = function() {
         dt('Streak'), dd(player.streak),
         dt('Status'), dd(player.status)
       ),
-      div({class: 'piece'}, player.symbol)
+      div({class: 'piece'}, player.icon)
     );
 
     this.playersNode.appendChild(playerNode);
@@ -240,30 +265,28 @@ BoardView.prototype.move = function(turn) {
   this.boardPieceNodes[turn.piece_id].innerHTML = turn.symbol;
 };
 
-BoardView.prototype.createOptions = function() {
-  this.optionsNode = div({class: 'options'});
-  this.leaveGameButton = div({class: 'button', onclick: function() {
-    this.controller.leave();
+BoardView.prototype.createOptionsButton = function() {
+  var controller = this.controller;
+  return div({class: 'button', onclick: function() {
+    controller.leave();
   }}, 'Leave Game');
 };
 
 BoardView.prototype.add2dom = function() {
-  this.createOptions();
   this.createBoard();
   this.updatePlayerList();
 
   element = document.getElementById('app');
-  element.appendChild(this.gameNode);
-  element.appendChild(this.optionsNode);
+  element.appendChild(this.gameContainerNode);
 
   console.log("drawing board");
 };
 
 BoardView.prototype.close = function() {
-  var parentNode = this.gameNode.parentNode;
+  var parentNode = this.gameContainerNode.parentNode;
 
   if ( parentNode !== null ) {
-    parentNode.removeChild(this.gameNode);
+    parentNode.removeChild(this.gameContainerNode);
   }
 
   this.clear(this.boardNode);

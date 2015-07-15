@@ -24,7 +24,6 @@ Game.prototype.send = function(command, options) {
 
 Game.prototype.init = function() {
   this.controllers.room_list.view.update();
-  //this.controllers.room_list.view.add2dom();
 
   if (this.getName() === null) {
     var game = this;
@@ -45,8 +44,9 @@ Game.prototype.prompt = function(text, button, callback) {
 Game.prototype.alert = function(text, callback) {
   this.controllers.alert.notice(text, callback);
 };
-Game.prototype.setTurnText = function(text) {
-  this.controllers.board.view.updateTurnText(text);
+
+Game.prototype.gameOver = function(info, callback) {
+  this.controllers.alert.gameOver(info, callback);
 };
 
 Game.prototype.getId = function() {
@@ -137,32 +137,19 @@ Game.prototype.onMessage = function(message) {
   if (data.command == 'player_quit') {
     this.controllers.board.playerQuit(data.player_id);
   }
-
   if (data.command == 'game_start') {
-    if (data.start_player_id == this.getId()) {
-      this.setTurnText("Your turn!");
-    } else {
-      this.setTurnText("Opponents turn.");
-    }
+    this.controllers.board.gameStart(data.start_player_id, data.players);
   }
-
   if (data.command == 'game_state') {
-    console.log("joining an in progress game");
     this.controllers.board.loadGame(data.game);
   }
-
   if (data.command == 'game_turn') {
-    console.log('turn was made');
-
-    if (data.turn.player_id == this.getId()) {
-      this.setTurnText("Your turn!");
-    } else {
-      this.setTurnText('Opponents turn.')
-    }
-
+    this.controllers.board.startTurn(this.getId());
     this.controllers.board.move(data.turn);
   }
-
+  if (data.command == 'game_over') {
+    this.controllers.board.gameOver(data);
+  }
   if (data.command == 'game_end') {
     if (data.result == 'win') {
       this.controllers.board.gameWon(data.winner_id);
@@ -172,7 +159,7 @@ Game.prototype.onMessage = function(message) {
   }
 
   if (data.command == 'illegal_move') {
-    this.setTurnText('Not your turn!');
+    this.controllers.board.illegalMove();
   }
 };
 

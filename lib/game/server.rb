@@ -1,7 +1,6 @@
 require 'em-websocket'
-require 'lib/game/room'
+require 'lib/game/message_handler'
 require 'lib/game/close_handler'
-require 'pry'
 
 module TTT
   module Game
@@ -37,7 +36,7 @@ module TTT
       end
 
       def update_room(room)
-        if room.empty? && !room.in_progress?
+        if (room.empty? && !room.in_progress?) || room.game_over?
           remove_room(room)
         end
 
@@ -45,7 +44,7 @@ module TTT
       end
 
       def websocket_handler
-        EM::WebSocket.run(:host => "0.0.0.0", :port => 8080, debug: true) do |ws|
+        EM::WebSocket.run(:host => "0.0.0.0", :port => WS_PORT, debug: true) do |ws|
           ws.onopen do |handshake|
             puts "WebSocket connection open"
           end
@@ -70,6 +69,8 @@ module TTT
         Thread.new do
           EM.run { websocket_handler }
         end
+
+        self
       end
 
       def self.start!

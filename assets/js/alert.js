@@ -14,9 +14,43 @@ AlertController.prototype.close = function() {
   this.view.close();
 };
 
+AlertController.prototype.gameOver = function(options, callback) {
+  this.view.gameOver(options, callback);
+};
+
 var AlertView = function(alertController) {
   this.controller = alertController;
   this.alertNode = div({class: 'alert'});
+};
+
+AlertView.prototype.gameOver = function(options, callback) {
+  var players = options.players;
+  var winner = "Game Over";
+  var closeCallback = callback;
+
+  var playersNode = div({class: 'players'});
+
+  for(i = 0; i < players.length; i++) {
+    var player = players[i];
+    var playerNode = div({class:'player'}, player.name, br(), player.record);
+
+    playersNode.appendChild(playerNode);
+  }
+
+  var controller = this.controller;
+  var gameOverNode = div({class: 'game_over'},
+    div({class:'winner'}, winner),
+    playersNode,
+    div({class:'options'},
+      div({class: 'button', onclick: function() {
+        controller.close();
+        closeCallback();
+      }, context: this}, "Close")
+    )
+  );
+
+  this.alertNode.appendChild(gameOverNode);
+  this.add2dom();
 };
 
 AlertView.prototype.prompt = function(text, buttonText, callback) {

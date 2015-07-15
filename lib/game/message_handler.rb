@@ -1,5 +1,6 @@
 require 'json'
 
+require 'lib/game/room'
 require 'lib/game/client'
 require 'lib/game/handler'
 require 'lib/game/message_builder'
@@ -11,8 +12,6 @@ module TTT
 
       def initialize(server, web_socket, raw_message)
         super
-
-        puts "Recieved message: #{raw_message}"
 
         data = JSON.parse(raw_message) rescue {}
         data = symify_hash(data)
@@ -27,13 +26,17 @@ module TTT
 
         puts "options: #{@options.inspect}"
 
-        case @command
-        when :register
+        if @command == :register
           register
+        end
+
+        return if @client.nil?
+
+        case @command
         when :room_create
-          room_create
+          create
         when :room_join
-          room_join
+          join
         when :move
           move
         when :leave
@@ -45,27 +48,6 @@ module TTT
 
       private
 
-      def leave
-        if @client.nil?
-          puts "client is nil!"
-          return
-        end
-
-        if @client.leave_room
-          @server.update_room(room)
-          @client.send(:room_list, rooms: @server.room_list)
-        end
-      end
-
-      def move
-        if @client.nil?
-          puts "client is nil!"
-          return
-        end
-
-        @client.move(@options[:piece_id])
-      end
-
       def register
         client = Client.new(@web_socket, @options[:name], @options[:id])
 
@@ -76,7 +58,19 @@ module TTT
         @server.clients << client
       end
 
-      def room_create
+      def leave
+        if room = @client.room
+          room.client_left(@client)
+          @server.update_room(room)
+          @client.send(:room_list, rooms: @server.room_list)
+        end
+      end
+
+      def move
+        @client.move(@options[:piece_id])
+      end
+
+      def create
         room = Room.new(@client, @options[:name])
 
         if room = @server.add_room(room)
@@ -87,7 +81,7 @@ module TTT
         end
       end
 
-      def room_join
+      def join
         room = @server.room_from_id(@options[:room_id])
 
         @client.join_room(room)

@@ -4,6 +4,7 @@ module TTT
   module Web
     class Server < Sinatra::Base
       set :public_folder, 'assets'
+      set :bind, '0.0.0.0'
 
       def self.start!
         self.run!

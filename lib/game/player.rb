@@ -29,6 +29,7 @@ module TTT
           record: record,
           streak: @highest_streak,
           status: @status,
+          icon: @symbol || '',
         }.merge(@client.info)
       end
 

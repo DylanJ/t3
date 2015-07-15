@@ -44,10 +44,6 @@ module TTT
         end
       end
 
-      def leave_room
-        @room.remove_client(self) if @room
-      end
-
       def move(piece_id)
         @room.move(self, piece_id) if @room
       end
