@@ -12,7 +12,7 @@
   <script type="text/javascript" src="js/board.js"></script>
   <script type="text/javascript" src="js/game.js"></script>
   <script type="text/javascript">
-    game = new Game('ws://0.0.0.0:8080');
+    game = new Game('ws://<%= @address %>');
 
     document.addEventListener("DOMContentLoaded", function(event) {
       game.init();

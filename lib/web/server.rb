@@ -1,6 +1,5 @@
 require 'sinatra/base'
 
-
 module TTT
   module Web
     class Server < Sinatra::Base
@@ -12,7 +11,9 @@ module TTT
 
       get '/' do
         load 'lib/game/message_handler.rb'
-        File.read('views/index.html')
+        @address = "#{settings.bind}:#{WS_PORT}"
+        template = File.read('views/index.html')
+        ERB.new(template).result(binding)
       end
     end
   end
