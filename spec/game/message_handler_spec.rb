@@ -101,6 +101,31 @@ module TTT
             end
           end
         end
+
+        describe "leave message" do
+          let(:command) { :leave }
+          let(:options) { {} }
+
+          context "when in a room" do
+            let(:room) { Room.new(client, room_name) }
+
+            before { server.add_room(room) }
+            before { room.add_client(client) }
+            before { subject }
+
+            specify do
+              expect(client).to have_received(:send).with(:room_list, any_args)
+            end
+          end
+
+          context "when not in a room" do
+            before { subject }
+
+            specify do
+              expect(client).to have_received(:send).with(:error, message: "you're not in a room")
+            end
+          end
+        end
       end
     end
   end

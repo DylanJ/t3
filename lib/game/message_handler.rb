@@ -26,8 +26,6 @@ module TTT
       def handle_message
         return unless acceptable_command?
 
-        puts "options: #{@options.inspect}"
-
         if @command == :register
           register
         end
@@ -65,6 +63,8 @@ module TTT
           room.client_left(@client)
           @server.update_room(room)
           @client.send(:room_list, rooms: @server.room_list)
+        else
+          @client.send(:error, {message: "you're not in a room"})
         end
       end
 
