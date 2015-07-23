@@ -108,7 +108,6 @@ module TTT
 
           context "when in a room" do
             let(:room) { Room.new(client, room_name) }
-
             before { server.add_room(room) }
             before { room.add_client(client) }
             before { subject }
@@ -123,6 +122,36 @@ module TTT
 
             specify do
               expect(client).to have_received(:send).with(:error, message: "you're not in a room")
+            end
+          end
+        end
+
+        describe "move message" do
+          let(:command) { :move }
+          let(:options) { { piece_id: 0 } }
+          let(:room) { Room.new(client, "foo") }
+
+          before do
+            allow(room).to receive(:valid_move?).and_return(valid_move)
+            allow(room).to receive(:finish_turn) # test this
+
+            room.add_client(client)
+            subject
+          end
+
+          context "valid move" do
+            let(:valid_move) { true }
+
+            specify do
+              expect(client).to have_received(:send).with(:valid_move)
+            end
+          end
+
+          context "illegal_move" do
+            let(:valid_move) { false }
+
+            specify do
+              expect(client).to have_received(:send).with(:illegal_move)
             end
           end
         end
