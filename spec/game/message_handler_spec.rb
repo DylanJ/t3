@@ -106,11 +106,17 @@ module TTT
           let(:command) { :leave }
           let(:options) { {} }
 
+          before do
+            if room
+              server.add_room(room)
+              room.add_client(client)
+            end
+
+            subject
+          end
+
           context "when in a room" do
             let(:room) { Room.new(client, room_name) }
-            before { server.add_room(room) }
-            before { room.add_client(client) }
-            before { subject }
 
             specify do
               expect(client).to have_received(:send).with(:room_list, any_args)
@@ -118,7 +124,7 @@ module TTT
           end
 
           context "when not in a room" do
-            before { subject }
+            let(:room) { nil }
 
             specify do
               expect(client).to have_received(:send).with(:error, message: "you're not in a room")

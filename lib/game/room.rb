@@ -27,8 +27,6 @@ module TTT
       end
 
       def add_client(client)
-        can_join = true
-
         return false unless joinable?
 
         # only players who started the game can rejoin
