@@ -7,10 +7,16 @@ module TTT
     class Server
       attr_reader :clients, :rooms
 
-      def initialize
+      def initialize(options={})
         @clients = []
         @rooms = []
+        @options = options
       end
+
+      def self.start!(options)
+        self.new(options).start
+      end
+
 
       def broadcast(command, options)
         @clients.each do |c|
@@ -44,7 +50,7 @@ module TTT
       end
 
       def websocket_handler
-        EM::WebSocket.run(:host => "0.0.0.0", :port => WS_PORT, debug: true) do |ws|
+        EM::WebSocket.run(host: @options[:bind], port: @options[:ws_port], debug: true) do |ws|
           ws.onopen do |handshake|
             puts "WebSocket connection open"
           end
@@ -71,10 +77,6 @@ module TTT
         end
 
         self
-      end
-
-      def self.start!
-        self.new.start
       end
 
       def client_from_web_socket(web_socket)
