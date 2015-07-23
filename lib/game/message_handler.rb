@@ -7,6 +7,8 @@ require 'lib/game/message_builder'
 
 module TTT
   module Game
+    TTT_VERSION = 'to ttt v1'
+
     class MessageHandler < Handler
       include MessageBuilder
 
@@ -51,7 +53,7 @@ module TTT
       def register
         client = Client.new(@web_socket, @options[:name], @options[:id])
 
-        client.send(:welcome, { msg: "to ttt v1" })
+        client.send(:welcome, { msg: TTT_VERSION })
         client.send(:room_list, rooms: @server.room_list)
         client.send(:user_info, client: client.info)
 
@@ -84,8 +86,12 @@ module TTT
       def join
         room = @server.room_from_id(@options[:room_id])
 
-        @client.join_room(room)
-        @server.update_room(room)
+        if room
+          @client.join_room(room)
+          @server.update_room(room)
+        else
+          @client.send(:error, {message: 'room does not exist'})
+        end
       end
 
       def symify_hash(hash)

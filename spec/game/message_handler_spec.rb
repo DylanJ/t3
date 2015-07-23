@@ -12,28 +12,20 @@ module TTT
 
       let(:web_socket) { double "WebSocket" }
       let(:server) { Server.new }
-      let(:raw_message) { generate_raw(command, options) }
+      let(:client) { Client.new }
+      let(:raw_message) { generate_raw(command, options || {}) }
       let(:handler) { MessageHandler.new(server, web_socket, raw_message) }
       let(:room_name) { "test room" }
 
-      let(:expected_room_info) do
-        {
-          name: room_name,
-          password: false,
-          size: "1/2",
-          grid: 3,
-          id: '123',
-          players: [{name: nil, score: 0}]
-        }
-      end
-
       before do
+        allow(server).to receive(:client_from_web_socket).and_return(client)
         allow_any_instance_of(Room).to receive(:generate_id).and_return("123")
+        allow(Client).to receive(:new).and_return(client)
+        allow(client).to receive(:send)
       end
 
       describe "Messages" do
         subject { handler.handle_message }
-        before { allow(handler).to receive(:send_message) }
 
         describe "register message" do
           let(:command) { :register }
@@ -42,13 +34,9 @@ module TTT
           before { subject }
 
           specify do
-            expect(handler).to have_received(:send_message).with(:welcome, {msg: 'to ttt v1' })
-          end
-          specify do
-            expect(handler).to have_received(:send_message).with(:room_list, rooms: [])
-          end
-          specify do
-            expect(handler).to have_received(:send_message).with(:user_info, username: 'Foo')
+            expect(client).to have_received(:send).with(:welcome, {msg: TTT_VERSION })
+            expect(client).to have_received(:send).with(:room_list, rooms: [])
+            expect(client).to have_received(:send).with(:user_info, client: client.info)
           end
 
           specify do
@@ -57,39 +45,43 @@ module TTT
         end
 
         describe "room_join message" do
-          let(:client) { Client.new }
           let(:room) { Room.new(client, room_name) }
-
           let(:command) { :room_join }
-          let(:options) { { room_id: room_name } }
+          let(:options) { { room_id: room_id } }
 
-          before do
-            allow(server).to receive(:client_from_web_socket).and_return(client)
-            allow(server).to receive(:room_from_id).and_return(room)
+          context "when room exists" do
+            let(:room_id) { room.id }
+
+            before do
+              server.add_room(room)
+              subject
+            end
+
+            specify do
+              expect(client).to have_received(:send).with(:room_joined, any_args)
+            end
           end
 
-          before { subject }
+          context "when room does not exist" do
+            let(:room_id) { 'doesnt_exist' }
 
-          context "when room was created" do
+            before { subject }
+
             specify do
-              expect(handler).to have_received(:send_message).with(:room_joined, room: expected_room_info)
+              expect(client).to have_received(:send).with(:error, message: "room does not exist")
             end
           end
         end
 
         describe "room_create message" do
-          let(:client) { Client.new }
-
           let(:command) { :room_create }
           let(:options) { { name: room_name } }
-          before do
-            allow(server).to receive(:client_from_web_socket).and_return(client)
-          end
+
           before { subject }
 
           context "when room was created" do
             specify do
-              expect(handler).to have_received(:send_message).with(:room_joined, room: expected_room_info)
+              expect(client).to have_received(:send).with(:room_joined, any_args)
             end
 
             specify do
@@ -98,10 +90,10 @@ module TTT
           end
 
           context "when room was not created" do
-            let(:options) { { name: '' } }
+            let(:options) { { name: '' } } # bad name
 
             specify do
-              expect(handler).to have_received(:send_message).with(:error, message: "cannot create room")
+              expect(client).to have_received(:send).with(:error, message: "cannot create room")
             end
 
             specify do

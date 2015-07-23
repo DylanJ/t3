@@ -23,7 +23,7 @@ module TTT
       end
 
       def send(command, options={})
-        if @web_socket.state != :connected
+        if @web_socket && @web_socket.state != :connected
           puts "web socket not connected from #{caller_locations[0]}"
           return
         end
